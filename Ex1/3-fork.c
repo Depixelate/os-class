@@ -10,7 +10,7 @@ int factorial(int n) {
 int main(int argc, char *argv[]) {
 
 	int d = fork();
-	printf("first arg - %s\n", argv[0]);
+	//printf("first arg - %s\n", argv[0]);
 	if(d == 0) {
 		// child process
 		int val = atoi(argv[1]);
