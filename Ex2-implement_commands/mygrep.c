@@ -179,7 +179,6 @@ void print_highlighted_line(const char *line, int line_number, int start[], int 
 }
 
 void process_file(const char *path, const char *patterns, int num_patterns, bool count, bool invert, bool number_lines) {
-    //const char *path = argv[i];
     char line[4096];
     int file;
     if(strcmp(path, "-") == 0) {
