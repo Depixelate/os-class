@@ -263,6 +263,8 @@ int main(int argc, char *argv[]) {
             process_file(argv[i], patterns, num_patterns, count, invert, number_lines);
         }
     }
+    
+    if(num_args > 1) return 0;
 
     if(num_args == 0) {
         errorc("Not enough arguments! No file specified!\n");
