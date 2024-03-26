@@ -524,7 +524,7 @@ int main() {
 		scanf("%c%c", buf, buf);
 		print_proc_info(num_procs);
 		printf("Again?(Y/N): ");
-		scanf("%s", &buf);
+		scanf("%s", buf);
 		if (tolower(buf[0]) == 'n') {
 			cont = false;
 		}
