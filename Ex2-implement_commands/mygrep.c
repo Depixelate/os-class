@@ -268,6 +268,7 @@ int main(int argc, char *argv[]) {
         errorc("Not enough arguments! No file specified!\n");
     }
 
-    /*Only one actual non-option argument present, the pattern, so assume file to be standard input*/
-    process_file("-", patterns, num_patterns, count, invert, number_lines);
+    if(num_args == 1) {
+        process_file("-", patterns, num_patterns, count, invert, number_lines);
+    }
 }

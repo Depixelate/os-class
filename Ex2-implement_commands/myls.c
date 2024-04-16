@@ -13,7 +13,7 @@
 #include <dirent.h>
 
 void print_format() {
-    fprintf(stderr, "format: ls [-l] <path1> <path2> ...\n");
+    fprintf(stderr, "format: ls [-l] [-R] <path1> <path2> ...\n");
 }
 
 bool chk(int var, int mask) {
@@ -106,9 +106,12 @@ void print_arg_info(char *path, bool detailed, bool recursive, bool file) {
         if(!file) return;
         print_file(path, path, detailed);
         printf("\n");
+        if(!detailed) {
+            printf("\n");
+        }
     } else {
         if(file) return;
-        printf("\n");
+        // printf("\n");
         printf("%s: \n", path);
         if(detailed) {
             printf("total %d\n", fileinfo.st_blocks);
@@ -143,6 +146,10 @@ void print_arg_info(char *path, bool detailed, bool recursive, bool file) {
         }
         printf("\n");
 
+        if(!detailed) {
+            printf("\n");
+        }
+
         if(recursive) {
             for(int i = 0; i < num_subdirs; i++) {
                 print_arg_info(subdir_paths[i], detailed, recursive, true);
@@ -153,7 +160,6 @@ void print_arg_info(char *path, bool detailed, bool recursive, bool file) {
             }
         }
     }
-    printf("\n");
 }
 
 
