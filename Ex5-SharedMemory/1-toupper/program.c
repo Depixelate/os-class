@@ -8,6 +8,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdbool.h>
+
+
 void perrorc(const char *msg) {
     perror(msg);
     exit(1);
@@ -52,6 +54,8 @@ int main() {
 	int result = shmdt(shared_mem);
 	if (result < 0)
 		perrorc("An error occurred while detaching from the shared memory segment");
-	if(shmctl(id, IPC_RMID, NULL) < 0)
-		perrorc("An error occurred when deleting the memory segment");
+	if(pid != 0) {
+		if (shmctl(id, IPC_RMID, NULL) < 0)
+			perrorc("An error occurred when deleting the memory segment");
+	}
 }

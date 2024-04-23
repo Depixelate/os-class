@@ -68,10 +68,10 @@ int main()
 	shmid = shmget(key, BUF_SIZE, IPC_CREAT | 0777);
 	if (shmid < 0)
 		perrorc("An error occurred while getting the shared memory segment");
-	shm = (SharedMem *)shmat(shmid, NULL, 0);
-	if ((int)shm < 0)
+	void *temp = shmat(shmid, NULL, 0);
+	if (temp == (void *)-1)
 		perrorc("An error occurred while attaching to shared memory");
-
+	shm = (SharedMem *)temp;
 	shm->server_pid = getpid();
 	shm->server_status = SUCCESS;
 

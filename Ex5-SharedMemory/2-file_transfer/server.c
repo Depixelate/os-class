@@ -11,11 +11,11 @@
 #include <errno.h>
 
 void print_error(const char *msg) {
-	fprintf(stderr, msg);
+	fprintf(stderr, "%s", msg);
 	exit(1);
 }
 
-void gen_error(const char *buf, const char *msg) {
+void gen_error(char *restrict buf, const char *restrict msg) {
 	sprintf(buf, "%s: %s", msg, strerror(errno));
 }
 
@@ -49,9 +49,11 @@ int main() {
 		perrorc("An error occurred while generating the key");
 	int id = shmget(key, sizeof(SharedMem), 0);
 	if (id < 0) perrorc("An error occurred while getting the shared memory segment");
-	SharedMem *shm = (SharedMem *)shmat(id, NULL, 0);
-	if((int)shm == -1) perrorc("An error occurred while attaching to the shared memory segment");
-	
+	void *temp = shmat(id, NULL, 0);
+	if (temp == (void *)-1)
+		perrorc("An error occurred while attaching to shared memory");
+	SharedMem *shm = (SharedMem *)temp;
+
 	int fd = open(shm->filename, O_RDONLY);
 	if(fd < 0) {
 		shm->server_status = ERROR;

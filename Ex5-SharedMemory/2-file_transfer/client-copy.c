@@ -40,8 +40,7 @@ int main() {
 	int id = shmget(key, sizeof(SharedMem), IPC_CREAT | 0777);
 	if (id < 0) perrorc("An error occurred while creating the shared memory segment");
 	void *temp = shmat(id, NULL, 0);
-	if (temp == (void *)-1)
-		perrorc("An error occurred while attaching to shared memory");
+	if(temp == (void *)-1) perrorc("An error occurred while attaching to the shared memory segment");
 	SharedMem *shm = (SharedMem *)temp;
 	shm->client_status = WAITING;
 	shm->server_status = WAITING;
