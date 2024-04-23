@@ -14,37 +14,70 @@ void perrorc(const char *msg) {
     exit(1);
 }
 
-#define BUF_SIZE 4096
+#define NAME_SIZE 100
+#define FILE_SIZE 4096
+
+typedef enum Status
+{
+	WAITING,
+	SUCCESS,
+	ERROR
+} Status;
+
+typedef struct SharedMem
+{
+	Status client_status;
+	Status server_status;
+	char filename[NAME_SIZE];
+	int size;
+	char file[FILE_SIZE];
+} SharedMem;
 
 int main() {
 	key_t key = ftok("/tmp", 65);
-	int id = shmget(key, BUF_SIZE, IPC_CREAT | 0777);
+	if(key < 0)
+		perrorc("An error occurred while generating the key");
+	int id = shmget(key, sizeof(SharedMem), IPC_CREAT | 0777);
 	if (id < 0) perrorc("An error occurred while creating the shared memory segment");
-	char *buf = (char *)shmat(id, NULL, 0);
-	if((int)buf == -1) perrorc("An error occurred while attaching to the shared memory segment");
-	buf[0] = 0;
+	SharedMem *shm = (SharedMem *)shmat(id, NULL, 0);
+	if((int)shm == -1) perrorc("An error occurred while attaching to the shared memory segment");
+	shm->client_status = WAITING;
+	shm->server_status = WAITING;
 	printf("Enter file path: ");
-	char *file_name = buf + 1;
-	fgets(file_name, BUF_SIZE - 1, stdin);
-	file_name[strlen(file_name)-1] = '\0';
-	char *content = file_name + strlen(file_name) + 1;
-	while(buf[0] == 0)
+	fgets(shm->filename, NAME_SIZE, stdin);
+	shm->filename[strlen(shm->filename)-1] = '\0';
+	shm->client_status = SUCCESS;
+	while (shm->server_status == WAITING)
 		;
-	if (buf[0] == -1) perrorc("An error occurred in the server");
-	int *size_ptr = (int *)content;
-	int size = *size_ptr;
-	content = content + 4;
-	int fd = open("new.txt", O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO);
-	printf("File Content: \n");
-	
-	for(int i = 0; i < size; i++) {
-		write(fd, content + i, 1);
-		putchar(content[i]);
+
+	if (shm->server_status == ERROR) {
+		fprintf(stderr, "The following error occurred in the server: %s", shm->file);
+		exit(1);
 	}
-	
-	buf[0] = 0;
-	
+
+	char copy_file_name[NAME_SIZE] = "";
+	char *dot_location = strstr(shm->filename, ".");
+	strncat(copy_file_name, shm->filename, dot_location != NULL ? dot_location - shm->filename : strlen(shm->filename));
+	strcat(strcat(copy_file_name, "-copy"), dot_location != NULL ? dot_location : "");
+	int fd = open(copy_file_name, O_CREAT | O_WRONLY, 0777);
+	if(fd < 0)
+		perrorc("The following error occurred while trying to open the file copy");
+
+	printf("File Content: \n");
+	for(int i = 0; i < shm->size; i+=0) {
+		int chars_written = write(fd, shm->file + i, 1);
+		if (chars_written < 0)
+			perrorc("The following error occurred while writing to the file: ");
+		if (i != 0) putchar(shm->file[i]);
+		i += chars_written;
+	}
+
+	shm->client_status = WAITING;
+
 	close(fd);
-	int result = shmdt(buf);
-	if (result < 0) perrorc("An error occurred while detaching from the shared memory segment");
+	int result = shmdt(shm);
+	if (result < 0)
+		perrorc("An error occurred while detaching from the shared memory segment");
+	if (shmctl(id, IPC_RMID, NULL) < 0)
+		perrorc("An error occurred when deleting the memory segment");
 }

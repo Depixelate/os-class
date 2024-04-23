@@ -17,76 +17,81 @@ void perrorc(const char *msg) {
     exit(1);
 }
 
+typedef enum Status
+{
+	WAITING,
+	SUCCESS,
+} Status;
+
+typedef struct SharedMem
+{
+	Status server_status;
+	int client_pid;
+	int server_pid;
+	char msg[BUF_SIZE];
+} SharedMem;
+
 bool waiting = false;
-int pos = 0;
-int *buf = NULL;
-char *msgs = NULL;
 int shmid = 0;
-int server_pid = -1;
+SharedMem *shm = NULL;
 
 void on_exit_func(int sig) {
-	signal(SIGINT, on_exit_func);
-	shmdt(buf);
-	shmctl(shmid, IPC_RMID, NULL);
+	if(signal(SIGUSR1, on_exit_func) == SIG_ERR)
+		perrorc("An error occurred when setting a signal");
+	int result = shmdt(shm);
+	if (result < 0)
+		perrorc("An error occurred while detaching from the shared memory segment");
+	if (shmctl(shmid, IPC_RMID, NULL) < 0)
+		perrorc("An error occurred when deleting the memory segment");
 	exit(0);
 }
 
 void on_recieve_msg(int sig) {
-	signal(SIGIO, on_recieve_msg);
-	char msg[BUF_SIZE];
-	for(int i = 0; true; i++) {
-		msg[i] = msgs[pos];
-		int new_pos = (pos + 1) % BUF_SIZE;
-		if(msgs[pos] == '\n') {
-			pos = new_pos;
-			msg[i+1] = '\0';
-			break;
-		}
-		pos = new_pos;
-	}
-	
-	printf("Message from server: %s", msg);
+	if (signal(SIGUSR2, on_recieve_msg) == SIG_ERR)
+		perrorc("An error occurred when setting a signal");
+	printf("Message from server: %s", shm->msg);
 	waiting = false;	
 }
 
-
-
 int main() {
-	signal(SIGINT, on_exit_func);
-	signal(SIGIO, on_recieve_msg);
+	if (signal(SIGUSR1, on_exit_func) == SIG_ERR)
+		perrorc("An error occurred when setting a signal");
+	if (signal(SIGUSR2, on_recieve_msg) == SIG_ERR)
+		perrorc("An error occurred when setting a signal");
 
 	key_t key = ftok("/tmp", 65);
+	if (key < 0)
+		perrorc("An error occurred while generating the key");
 
 	shmid = shmget(key, BUF_SIZE, IPC_CREAT | 0777);
-	buf = (int *)shmat(shmid, NULL, 0);
-	buf[0] = getpid();
-	buf[1] = 0;
-	msgs = (char *)(&buf[2]);
+	if (shmid < 0)
+		perrorc("An error occurred while getting the shared memory segment");
+	shm = (SharedMem *)shmat(shmid, NULL, 0);
+	if((int)shm < 0)
+		perrorc("An error occurred while attaching to shared memory");
+	shm->server_status = WAITING;
+	shm->client_pid = getpid();
 
-	while(buf[1] == 0)
+	while(shm->server_status == WAITING)
 		;
-
-	server_pid = buf[1];
 
 	while(true) {
 		while(waiting)
 		;
 		printf("Do you want to quit(y/n): ");
-		char c = getchar();
-		getchar();
-		if (c == 'y')
+		char buf[BUF_SIZE];
+		fgets(buf, BUF_SIZE, stdin);
+
+		if (buf[0] == 'y')
 		{
-			kill(server_pid, SIGINT);
+			if(kill(shm->server_pid, SIGUSR1) < 0)
+				perrorc("An error occurred while trying to send a signal");
 			on_exit_func(0);
 		}
 		printf("Enter a message: ");
-		while(true) {
-			char c = getchar();
-			msgs[pos] = c;
-			pos = (pos + 1) % BUF_SIZE;
-			if(c == '\n') break;
-		}
-		kill(server_pid, SIGIO);
+		fgets(shm->msg, BUF_SIZE, stdin);
+		if(kill(shm->server_pid, SIGUSR2) < 0)
+			perrorc("An error occurred while trying to send a signal");
 		waiting = true;
 	}
 }

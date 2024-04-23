@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+
 /*
 any argument starting with -n is an option
 first non-option text is pattern, every one after that is files
