@@ -9,15 +9,30 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/wait.h>
-#define BUF_SIZE 8
+#include <signal.h>
+#define BUF_SIZE 4
 
 typedef struct SharedMem {
     sem_t full;
     sem_t empty;
     sem_t mutex;
-    char buf[BUF_SIZE];
+    sem_t new_cnxn;
+    int n;
+    int buf[BUF_SIZE];
     bool finished;
 } SharedMem;
+
+SharedMem *shm = NULL;
+
+void handle_quit(int sig) {
+    shm->finished=true;
+    destroy_semaphore(&shm->full);
+    destroy_semaphore(&shm->empty);
+    destroy_semaphore(&shm->mutex);
+    munmap(shm, sizeof(SharedMem));
+    shm_unlink("/rand_prod_cons");
+    exit(0);
+}
 
 void perrorc(const char *msg)
 {
@@ -50,22 +65,33 @@ void post_semaphore(sem_t *sem) {
 }
 
 int main() {
-    int shmfd = shm_open("/prod_cons", O_RDWR | O_CREAT | O_TRUNC, 0777);
+    int shmfd = shm_open("/rand_prod_cons", O_RDWR | O_CREAT | O_TRUNC, 0777);
     if(shmfd < 0)
         perrorc("An error occurred while creating shared memory");
     if(ftruncate(shmfd, sizeof(SharedMem)) == -1)
         perrorc("An error occurred when resizing shared memory");
-    
     SharedMem *shm = mmap(NULL, sizeof(SharedMem), PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
     if (shm == MAP_FAILED)
         perrorc("An error occurred during mmap");
-    init_semaphore(&shm->full, true, 0);
-    init_semaphore(&shm->empty, true, BUF_SIZE);
-    init_semaphore(&shm->mutex, true, 1);
-    shm->finished = false;
-    int pid = fork();
-    if(pid < 0)	
-        perrorc("An error occurred when forking the process");
+    struct sigaction action;
+    action.sa_handler = handle_quit;
+    action.sa_flags = 0;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGINT, action, NULL);
+    sigaction(SIGQUIT, action, NULL);
+    sigaction(SIGTERM, action, NULL);
+    
+    while(true) {
+    	init_semaphore(&shm->full, true, 0);
+    	init_semaphore(&shm->empty, true, BUF_SIZE);
+    	init_semaphore(&shm->mutex, true, 1);
+    	init_semaphore(&shm->new_cnxn, 
+    	shm->client_ready = false;
+    	shm->finished = false;
+    	
+    	
+    	for(int i = 0; 
+    	
     if(pid != 0) { // Producer/Parent
         int in = 0;
         char input[4096];
@@ -112,13 +138,10 @@ int main() {
         destroy_semaphore(&shm->mutex);
         printf("Consumer Exited\n");
     }
-    if(munmap(shm, sizeof(SharedMem)) == -1) {
-    	perrorc("Error occurred while unmapping memory");
-    }
+
     
-    if(shm_unlink("/prod_cons") == -1) {
-    	perrorc("Error occurred while unlinking from shared memory");
     }
-    
+    munmap(shm, sizeof(SharedMem));
+    shm_unlink("/prod_cons");
     return 0;
 }
