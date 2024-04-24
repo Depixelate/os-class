@@ -6,14 +6,15 @@
 #include <semaphore.h>
 #include <stdbool.h>
 #include <string.h>
-
+#include <stdlib.h>
+#include <stdio.h>
 #define BUF_SIZE 8
 
 typedef struct SharedMem {
     sem_t full;
     sem_t empty;
     sem_t mutex;
-    char buf[BUF_SIZE]
+    char buf[BUF_SIZE];
 } SharedMem;
 
 void perrorc(const char *msg)
@@ -77,23 +78,22 @@ int main() {
             in = (in + 1) % BUF_SIZE;
             post_semaphore(&shm->full);
             printf("Producer: Unlocking Mutex\n");
-            post_semaphore(&shm->mutex);
-        }
-        
-        
+            post_semaphore(&shm->mutex);                
+        }                
     } else { // Consumer/Child
         int out = 0;
         while(true) {
-            printf("Producer: Waiting for available space in buf\n");
-            wait_semaphore(&shm->empty);
-            printf("Producer: Waiting for mutex\n");
+            printf("Consumer:Waiting for available items\n");
+            wait_semaphore(&shm->full);
+            printf("Consumer: Waiting for mutex\n");
             wait_semaphore(&shm->mutex);
-            printf("Producer: Producing %c\n", input[i]);
-            shm->buf[in] = input[i];
-            in = (in + 1) % BUF_SIZE;
-            post_semaphore(&shm->full);
-            printf("Producer: Unlocking Mutex\n");
-            post_semaphore(&shm->mutex);
+            char c = shm->buf[out++];
+            printf("Consumer: Consuming %c\n", c);
+            out %= BUF_SIZE;                            
+            post_semaphore(&shm->empty);
+            printf("Consumer: Unlocking Mutex\n");
+            post_semaphore(&shm->mutex);            
+            if(c == '\0') break;
         }
         destroy_semaphore(&shm->full);
         destroy_semaphore(&shm->empty);
