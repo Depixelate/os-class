@@ -29,6 +29,7 @@ typedef struct SharedMem {
 SharedMem *shm = NULL;
 
 void at_exit() {
+    printf("Exiting...\n");
     shm->finished=true;
     sem_destroy(&shm->full);
     sem_destroy(&shm->empty);
@@ -105,7 +106,7 @@ int main() {
         perrorc("An error occurred while creating shared memory");
     if(ftruncate(shmfd, sizeof(SharedMem)) == -1)
         perrorc("An error occurred when resizing shared memory");
-    SharedMem *shm = mmap(NULL, sizeof(SharedMem), PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
+    shm = mmap(NULL, sizeof(SharedMem), PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
     if (shm == MAP_FAILED)
         perrorc("An error occurred during mmap");
     srand(time(NULL));
