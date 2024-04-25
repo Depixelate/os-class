@@ -17,7 +17,8 @@ typedef struct SharedMem {
     sem_t full;
     sem_t empty;
     sem_t mutex;
-    sem_t wait;
+    sem_t server_wait;
+    sem_t client_wait;
     sem_t cnxn;
     int n;
     int min;
@@ -34,12 +35,14 @@ void at_exit() {
     sem_destroy(&shm->full);
     sem_destroy(&shm->empty);
     sem_destroy(&shm->mutex);
+    sem_destroy(&shm->server_wait);
+    sem_destroy(&shm->client_wait);
+    sem_destroy(&shm->cnxn);
     munmap(shm, sizeof(SharedMem));
     shm_unlink("/rand_prod_cons");
 }
 
-void handle_quit(int sig) {
-    at_exit();    
+void handle_quit(int sig) {    
     exit(0);
 }
 
@@ -87,7 +90,8 @@ void reinit_semaphores() {
 
 void init_semaphores() {
     reinit_semaphores();
-    init_semaphore(&shm->wait, true, 0);
+    init_semaphore(&shm->server_wait, true, 0);
+    init_semaphore(&shm->client_wait, true, 0);
 	init_semaphore(&shm->cnxn, true, 1);
 }
 
@@ -96,9 +100,9 @@ int main() {
     action.sa_handler = handle_quit;
     action.sa_flags = 0;
     sigemptyset(&action.sa_mask);
-    sigaction(SIGINT, action, NULL);
-    sigaction(SIGQUIT, action, NULL);
-    sigaction(SIGTERM, action, NULL);
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGQUIT, &action, NULL);
+    sigaction(SIGTERM, &action, NULL);
     atexit(at_exit);
 
     int shmfd = shm_open("/rand_prod_cons", O_RDWR | O_CREAT | O_TRUNC, 0777);
@@ -116,8 +120,8 @@ int main() {
     
     while(true) {
         printf("Waiting for new connection...\n");
-        wait_semaphore(&shm->wait);
-        printf("Reinitializing Shared Memory\n")
+        wait_semaphore(&shm->client_wait);
+        printf("Reinitializing Shared Memory\n");
         destroy_semaphores();
         reinit_semaphores();
         shm->finished = false;
@@ -125,7 +129,7 @@ int main() {
         int n;
         n = shm->n;
 
-        post_semaphore(&shm->wait);
+        post_semaphore(&shm->server_wait);
         printf("Entering main loop\n");
         int in = 0;
     	for(int i = 0; i < n; i++) {

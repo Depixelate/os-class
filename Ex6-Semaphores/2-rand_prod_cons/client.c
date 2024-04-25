@@ -17,7 +17,8 @@ typedef struct SharedMem {
     sem_t full;
     sem_t empty;
     sem_t mutex;
-    sem_t wait;
+    sem_t server_wait;
+    sem_t client_wait;
     sem_t cnxn;
     int n;
     int min;
@@ -45,7 +46,7 @@ void post_semaphore(sem_t *sem) {
 }
 
 int main() {
-    int shmfd = shm_open("/rand_prod_cons", O_RDWR);
+    int shmfd = shm_open("/rand_prod_cons", O_RDWR, 0777);
     if(shmfd < 0)
         perrorc("An error occurred while opening shared memory");
     SharedMem *shm = mmap(NULL, sizeof(SharedMem), PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
@@ -67,8 +68,8 @@ int main() {
     shm->max = max;
     shm->n = n;
     printf("Waiting for Server to reinitialize\n");
-    post_semaphore(&shm->wait);
-    wait_semaphore(&shm->wait);
+    post_semaphore(&shm->client_wait);
+    wait_semaphore(&shm->server_wait);
 
     printf("Entering main loop..\n");
     int out = 0;            
@@ -84,15 +85,15 @@ int main() {
         int val;
         if(sem_getvalue(&shm->full, &val) == -1) perrorc("An error occurred while trying to get semaphore value");
         if(val <= 0 && shm->finished) break;
-        printf("Consumer: Unlocking Mutex\n");
+        printf("Unlocking Mutex\n");
         post_semaphore(&shm->mutex);            
     }
-    printf("Consumer Finished\n");
+    printf("Finished\n");
     printf("Ending connection...\n");
     post_semaphore(&shm->cnxn);
     printf("Deinitializing shared memory...\n");
-    memunmap(shm, sizeof(SharedMemory));
-    shm_unlink("/rand_prod_cons");
+    munmap(shm, sizeof(SharedMem));
+    close(shmfd);
     printf("Done\n");   
     return 0;
 }
