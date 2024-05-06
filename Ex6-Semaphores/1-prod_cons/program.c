@@ -86,9 +86,7 @@ int main() {
             }
             printf("Producer: Unlocking Mutex\n");
             post_semaphore(&shm->mutex);                
-        }
-        wait(NULL);                
-        printf("Producer Exited\n");
+        }           
     } else { // Consumer/Child
         int out = 0;
         
@@ -110,14 +108,20 @@ int main() {
         destroy_semaphore(&shm->full);
         destroy_semaphore(&shm->empty);
         destroy_semaphore(&shm->mutex);
-        printf("Consumer Exited\n");
     }
     if(munmap(shm, sizeof(SharedMem)) == -1) {
     	perrorc("Error occurred while unmapping memory");
     }
     
-    if(shm_unlink("/prod_cons") == -1) {
-    	perrorc("Error occurred while unlinking from shared memory");
+    if(pid != 0) { // Producer/Parent
+        close(shmfd);
+        wait(NULL);     
+        printf("Producer Exited\n");
+    } else {
+        if(shm_unlink("/prod_cons") == -1) { // Consumer/Child
+    	    perrorc("Error occurred while unlinking from shared memory");
+        }
+        printf("Consumer Exited\n");
     }
     
     return 0;
