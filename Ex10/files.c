@@ -54,7 +54,7 @@ bool has_space(Block *disk, int num_blocks, int size, bool contiguous) {
 }
 
 bool is_contig_free(Block disk[], int num_blocks, int start_block, int size) {
-	for(int i = start_block; i < size; i++) {
+	for(int i = start_block; i < start_block + size; i++) {
 		if(disk[i].in_use) return false;
 	}
 	return true;
@@ -154,16 +154,16 @@ int main() {
 	switch(strat_index) {
 		case 1:
 			printf("\nDirectory Structure\n\n");
-			printf("File Name\tStart\tLength\n");
-			for(int i = 0; i < num_blocks; i++) {
-				printf("%s\t%d\t%d\n", entries[i].filename, entries[i].start, entries[i].end - entries[i].start + 1);
+			printf("%-15s%-7s%-7s\n", "File Name", "Start", "Length");
+			for(int i = 0; i < num_files; i++) {
+				printf("%-15s%-7d%-7d\n", entries[i].filename, entries[i].start, entries[i].end - entries[i].start + 1);
 			}
 			break;
 		case 2:
 			printf("\nDirectory Structure\n\n");
-			printf("File Name\tStart\tEnd\n");
-			for(int i = 0; i < num_blocks; i++) {
-				printf("%s\t%d\t%d\n", entries[i].filename, entries[i].start, entries[i].end);
+			printf("%-15s%-7s%-7s\n", "File Name", "Start", "End");
+			for(int i = 0; i < num_files; i++) {
+				printf("%-15s%-7d%-7d\n", entries[i].filename, entries[i].start, entries[i].end);
 			}
 			printf("\nIndividual File Listings\n\n");
 			for(int i = 0; i < num_files; i++) {
@@ -173,13 +173,14 @@ int main() {
 					printf("%d ", cur_block);
 					cur_block = disk[cur_block].next;
 				}
+				printf("\n");
 			}
 			break;
 		case 3:
 			printf("\nDirectory Structure\n\n");
-			printf("File Name\tIndex Block\n");
-			for(int i = 0; i < num_blocks; i++) {
-				printf("%s\t%d\n", entries[i].filename, entries[i].start);
+			printf("%-15s%-15s\n", "File Name", "Index Block");
+			for(int i = 0; i < num_files; i++) {
+				printf("%-15s%-15d\n", entries[i].filename, entries[i].start);
 			}
 			printf("\nIndex Tables\n\n");
 			for(int i = 0; i < num_files; i++) {
@@ -188,7 +189,8 @@ int main() {
 				int *index = disk[index_block].block_table;
 				for(int i = 0; index[i] != -1; i++) {
 					printf("%d ", index[i]);
-				} 
+				}
+				printf("\n"); 
 			}
 			break;
 			
